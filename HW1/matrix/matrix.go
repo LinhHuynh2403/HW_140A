@@ -55,7 +55,7 @@ func Transpose(mat [][]int) [][]int {
 // AreNeighbors returns true iff a and b are neighbors in the 2D matrix mat.
 func AreNeighbors(mat [][]int, a, b int) bool {
 	panic("TODO: implement this!")
-	// a and b are neighbors iff they are next to each other in vertica or horizontal
+	// a and b are neighbors iff they are next to each other in vertical or horizontal
 	// iterate through matrix and find location of a and b
 	// a(i1, j1) and b(i2, j2)
 	var i1, j1, i2, j2 int
