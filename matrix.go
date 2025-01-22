@@ -1,84 +1,67 @@
 package matrix
 
 // If needed, you may define helper functions here.
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
 
 // AreAdjacent returns true iff a and b are adjacent in lst.
-func AreAdjacent(a, b int, lst []int) bool {
+func AreAdjacent(a, b int, check []int) bool {
 	panic("TODO: implement this!")
-	// to check if a and b are adjacent, we check the index of a and b
-	// if (abs(index(a) - index(b) == 1)) then return true, otherwise, return false
-	var index_a, index_b = -1, -1
-
-	for i := 0; i < len(lst); i++ {
-		if lst[i] == a {
-			index_a = i
-		}
-		if lst[i] == b {
-			index_b = i
-		}
-	}
-	// when a and b are not in the matrix
-	if index_a == -1 || index_b == -1 {
-		return false
-	}
-	return abs(index_a-index_b) == 1
+	if len(check) < 2 {
+        return false
+    }
+//1-1-2-1-1
+    for i, num := range check {
+        if num == a {
+            if i > 0 && check[i-1] == b {
+                return true
+            }
+            if i < len(check)-1 && check[i+1] == b {
+                return true
+            }
+        }
+    }
+        return false
 }
 
 // Transpose returns the transpose of the 2D matrix mat.
-func Transpose(mat [][]int) [][]int {
+func Transpose(a [][]int) [][]int {
 	panic("TODO: implement this!")
-	// create a new transpose_matrix n x m matrix
-	var m, n = len(mat), len(mat[0])
-
-	// create new result matrix (slice)
-	transpose_matrix := make([][]int, n)
-	for i := range transpose_matrix {
-		transpose_matrix[i] = make([]int, m)
-	}
-
-	// loop through the origin array
-	for i := 0; i < m; i++ {
-		for j := 0; j < n; j++ {
-			transpose_matrix[j][i] = mat[i][j]
-		}
-	}
-
-	return transpose_matrix
+	if len(a) == 0 {
+        return [][]int{} 
+    }
+    m := len(a[0])   //colum
+    n := len(a)     //row
+    ans := make([][]int, m)
+    for i := range ans {
+        ans[i] = make([]int, n)
+        for j := range ans[i] {
+            ans[i][j] = a[j][i]
+        }
+    }
+    return ans
 }
 
-// AreNeighbors returns true iff a and b are neighbors in the 2D matrix mat.
+
 func AreNeighbors(mat [][]int, a, b int) bool {
-	panic("TODO: implement this!")
-	// a and b are neighbors iff they are next to each other in vertica or horizontal
-	// iterate through matrix and find location of a and b
-	// a(i1, j1) and b(i2, j2)
-	var i1, j1, i2, j2 int
-	var m, n = len(mat), len(mat[0])
-
-	i1, i2, j1, j2 = -1, -1, -1, -1 // when a and b are not in the matrix
-
-	for i := 0; i < m; i++ {
-		for j := 0; j < n; j++ {
-			if mat[i][j] == a {
-				i1 = i
-				j1 = j
-			}
-			if mat[i][j] == b {
-				i2 = i
-				j2 = j
-			}
-		}
-	}
-
-	if ((abs(i1-i2) == 1) && j1 == j2) || ((abs(j1-j2) == 1) && i1 == i2) {
-		return true
-	}
-	return false
-
+    if len(mat) == 0 || len(mat[0]) == 0 {
+        return false
+    }
+    m := [4]int{-1, 1, 0, 0} 
+    n := [4]int{0, 0, -1, 1}
+    for i := range mat {
+        for j := range mat[i] {  
+            if mat[i][j] == a {
+                for k := 0; k < 4; k++ {
+                    newRow := i + m[k]
+                    newCol := j + n[k]
+                    if newRow >= 0 && newRow < len(mat) &&
+                       newCol >= 0 && newCol < len(mat[newRow]) {
+                        if mat[newRow][newCol] == b {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false
 }
