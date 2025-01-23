@@ -25,22 +25,29 @@ func AreAdjacent(a, b int, check []int) bool {
 }
 
 // Transpose returns the transpose of the 2D matrix mat.
+
 func Transpose(a [][]int) [][]int {
-	panic("TODO: implement this!")
-	if len(a) == 0 {
-        return [][]int{} 
+    // Check if the input matrix is empty
+    if(a==nil) {return nil}
+    if len(a) == 0 || len(a[0]) == 0 {
+        return [][]int{}
     }
-    m := len(a[0])   //colum
-    n := len(a)     //row
+
+    n := len(a)     // Number of rows in the input matrix
+    m := len(a[0])  // Number of columns in the input matrix
+
+    // Create a new 2D slice for the transposed matrix
     ans := make([][]int, m)
     for i := range ans {
-        ans[i] = make([]int, n)
+        ans[i] = make([]int, n) // Each row in the transposed matrix has 'n' elements
         for j := range ans[i] {
-            ans[i][j] = a[j][i]
+            ans[i][j] = a[j][i] // Swap rows and columns
         }
     }
+
     return ans
 }
+
 
 // good
 
