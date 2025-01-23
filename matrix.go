@@ -4,21 +4,23 @@ package matrix
 
 // AreAdjacent returns true iff a and b are adjacent in lst.
 func AreAdjacent(a, b int, check []int) bool {
-	panic("TODO: implement this!")
 	if len(check) < 2 {
         return false
     }
-//1-1-2-1-1
     for i, num := range check {
         if num == a {
-            if i > 0 && check[i-1] == b {
+        if i > 0{
+            if  check[i-1] == b {
                 return true
             }
-            if i < len(check)-1 && check[i+1] == b {
+        }
+        if i < len(check)-1 {
+             if check[i+1] == b {
                 return true
             }
         }
     }
+}
         return false
 }
 
@@ -39,6 +41,8 @@ func Transpose(a [][]int) [][]int {
     }
     return ans
 }
+
+// good
 
 
 func AreNeighbors(mat [][]int, a, b int) bool {
