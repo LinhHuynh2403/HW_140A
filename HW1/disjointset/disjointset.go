@@ -11,10 +11,48 @@ type DisjointSet interface {
 	FindSet(int) int
 }
 
-// TODO: implement a type that satisfies the DisjointSet interface.
+type disjointSet struct {
+	parent map[int]int
+	size   map[int]int
+}
 
-// NewDisjointSet creates a struct of a type that satisfies the DisjointSet interface.
 func NewDisjointSet() DisjointSet {
-	panic("TODO: implement this!")
-	// disjoint
+	return &disjointSet{
+		parent: make(map[int]int),
+		size:   make(map[int]int),
+	}
+}
+
+func (d *disjointSet) FindSet(u int) int {
+	if _, ok := d.parent[u]; !ok {
+		d.parent[u] = u
+		d.size[u] = 1
+		return u
+	}
+	// Path compression
+	for d.parent[u] != u {
+		d.parent[u] = d.parent[d.parent[u]]  // Path compression step
+		u = d.parent[u]
+	}
+	return u
+}
+
+func (d *disjointSet) UnionSet(a, b int) int {
+	rootA := d.FindSet(a)
+	rootB := d.FindSet(b)
+
+	if rootA == rootB {
+		return rootA
+	}
+
+	// Union by size
+	if d.size[rootA] < d.size[rootB] {
+		d.parent[rootA] = rootB
+		d.size[rootB] += d.size[rootA]
+		return rootB
+	} else {
+		d.parent[rootB] = rootA
+		d.size[rootA] += d.size[rootB]
+		return rootA
+	}
 }
