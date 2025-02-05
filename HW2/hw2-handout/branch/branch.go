@@ -12,16 +12,8 @@ func branchCount(fn *ast.FuncDecl) uint {
 	var count uint = 0
 	ast.Inspect(fn, func(node ast.Node) bool {
 		switch node.(type) {
-		case *ast.IfStmt:
-			count += 1
-		case *ast.SwitchStmt:
-			count += 1
-		case *ast.TypeSwitchStmt:
-			count += 1
-		case *ast.ForStmt:
-			count += 1
-		case *ast.RangeStmt:
-			count += 1
+		case *ast.IfStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.ForStmt, *ast.RangeStmt:
+			count ++
 		}
 
 		// If we return true, we keep recursing under this AST node.
