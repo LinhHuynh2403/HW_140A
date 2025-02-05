@@ -7,23 +7,23 @@ import (
 )
 
 func branchCount(fn *ast.FuncDecl) uint {
-	var count uint =0
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		switch n.(type) {
+	var dem uint =0
+	ast.Inspect(fn.Body, func(aa ast.Node) bool {
+		switch aa.(type) {
 		case *ast.IfStmt:
-			count++
+			dem++
 		case *ast.SwitchStmt:
-			count++
+			dem++
 		case *ast.TypeSwitchStmt:
-			count++
+			dem++
 		case *ast.ForStmt:
-			count++
+			dem++
 		case *ast.RangeStmt:
-			count++
+			dem++
 		}
 		return true
 	})
-	return count
+	return dem
 }
 
 func ComputeBranchFactors(src string) map[string]uint {
