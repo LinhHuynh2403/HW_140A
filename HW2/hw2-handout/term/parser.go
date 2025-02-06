@@ -25,6 +25,12 @@ type Parser interface {
 	Parse(string) (*Term, error)
 }
 
+// Implement the Parser interface.
+type ParserImpl struct {
+	lex     *lexer
+	peekTok *token
+}
+
 // NewParser creates a struct of a type that satisfies the Parser interface.
 func NewParser() Parser {
 	panic("TODO: implement NewParser")
