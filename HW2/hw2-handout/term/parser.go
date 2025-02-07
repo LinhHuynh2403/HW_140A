@@ -133,10 +133,12 @@ func (p *ParserImpl) parseStart() (*Term, error) {
 	}
 
 	// <start> ::= <term> | ϵ
+	// start -> \epsilon case
 	if tok.typ == tokenEOF {
 		return nil, nil // Epsilon production
 	}
 
+	// start -> term case
 	return p.parseTerm()
 }
 
@@ -247,7 +249,7 @@ func (p *ParserImpl) parseOtherArgs() ([]*Term, error) {
 	return p.parseArgs()
 }
 
-// getOrCreateTerm returns a cached term or creates a new one.
+// getOrCreateTerm returns a used term or creates a new one.
 func (p *ParserImpl) getOrCreateTerm(typ TermType, literal string) *Term {
 	key := strconv.Itoa(int(typ)) + ":" + literal
 	if term, ok := p.usedTerms[key]; ok {
@@ -258,7 +260,7 @@ func (p *ParserImpl) getOrCreateTerm(typ TermType, literal string) *Term {
 	return term
 }
 
-// getOrCreateCompoundTerm returns a cached compound term or creates a new one.
+// getOrCreateCompoundTerm returns a used compound term or creates a new one.
 func (p *ParserImpl) getOrCreateCompoundTerm(functor *Term, args []*Term) *Term {
 	key := "compound:" + functor.Literal + "(" + TermSliceToString(args) + ")"
 	if term, ok := p.usedTerms[key]; ok {

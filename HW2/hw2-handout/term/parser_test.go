@@ -28,6 +28,7 @@ func TestParserInvalidTerms(t *testing.T) {
 		"foo(X *",
 		"foo(X, *",
 		"foo*",
+		"foo(*)",
 		// TODO add more tests for 100% test coverage
 	} {
 		func() {
