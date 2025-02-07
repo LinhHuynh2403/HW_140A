@@ -187,9 +187,6 @@ func (p *ParserImpl) parsePars() (*Term, error) {
 
 	// Consume '('
 	_, err = p.nextToken()
-	if err != nil {
-		return nil, err
-	}
 
 	// Parse <args>
 	args, err := p.parseArgs()
@@ -241,9 +238,6 @@ func (p *ParserImpl) parseOtherArgs() ([]*Term, error) {
 
 	// Consume ','
 	_, err = p.nextToken()
-	if err != nil {
-		return nil, err
-	}
 
 	// Parse <args>
 	return p.parseArgs()
