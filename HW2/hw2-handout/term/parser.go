@@ -36,7 +36,7 @@ var ErrParser = errors.New("parser error")
 //              |                             |                          ||
 // <args>       | ATOM, NUM, VAR              | )                        ||
 //              |                             |                          ||
-// <other args> | ',', ϵ                      | )                        ||
+// <other args> | ',', ϵ                      | ), $                     ||
 //              |                             |                          ||
 
 //              |      ATOM                      |      NUM       				   |      VAR       				|      (        	  |      )        		|      ,        			|      $        	||
