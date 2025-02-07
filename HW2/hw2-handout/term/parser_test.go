@@ -28,8 +28,11 @@ func TestParserInvalidTerms(t *testing.T) {
 		"foo(X *",
 		"foo(X, *",
 		"foo*",
-		"foo(*)",
 		// TODO add more tests for 100% test coverage
+		"foo*)",
+		"foo(X,))",
+		"foo(X Y)",
+		"foo X)",
 	} {
 		func() {
 			defer func() {
@@ -335,3 +338,5 @@ func checkTermSliceIsomorphic(expectedSlice, actualSlice []*Term, matchTerms map
 	}
 	return true, nil
 }
+
+

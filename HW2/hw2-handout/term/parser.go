@@ -19,7 +19,7 @@ var ErrParser = errors.New("parser error")
 // <args>     ::= <term> | <term> COMMA <args>
 //
 
-// LL(1) grammar for the given expressions
+// LL(1) grammar for the given language
 // <start>      ::= <term> | ϵ
 // <term>       ::= ATOM <pars> | NUM | VAR
 // <pars>       ::= (<args>) | ϵ
@@ -113,7 +113,7 @@ func (p *ParserImpl) Parse(input string) (*Term, error) {
 	// Start parsing from the <start> non-terminal
 	term, err := p.parseStart()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
 	// Ensure the input is fully consumed
@@ -122,17 +122,18 @@ func (p *ParserImpl) Parse(input string) (*Term, error) {
 		return nil, ErrParser
 	}
 
+	// Return the result
 	return term, nil
 }
 
 // parseStart parses the <start> non-terminal.
+// <start> ::= <term> | ϵ
 func (p *ParserImpl) parseStart() (*Term, error) {
 	tok, err := p.peekToken()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
-	// <start> ::= <term> | ϵ
 	// start -> \epsilon case
 	if tok.typ == tokenEOF {
 		return nil, nil // Epsilon production
@@ -146,7 +147,7 @@ func (p *ParserImpl) parseStart() (*Term, error) {
 func (p *ParserImpl) parseTerm() (*Term, error) {
 	tok, err := p.nextToken()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
 	// <term> ::= ATOM <pars> | NUM | VAR
@@ -155,43 +156,45 @@ func (p *ParserImpl) parseTerm() (*Term, error) {
 		// ATOM <pars>
 		compound, err := p.parsePars()
 		if err != nil {
-			return nil, err
+			return nil, ErrParser
 		}
 		if compound != nil {
-			functor := p.getOrCreateTerm(TermAtom, tok.literal)
-			return p.getOrCreateCompoundTerm(functor, compound.Args), nil
+			functor := p.checkTerm(TermAtom, tok.literal)
+			return p.checkCompoundTerm(functor, compound.Args), nil
 		}
-		return p.getOrCreateTerm(TermAtom, tok.literal), nil
+		return p.checkTerm(TermAtom, tok.literal), nil
 	case tokenNumber:
 		// NUM
-		return p.getOrCreateTerm(TermNumber, tok.literal), nil
+		return p.checkTerm(TermNumber, tok.literal), nil
 	case tokenVariable:
 		// VAR
-		return p.getOrCreateTerm(TermVariable, tok.literal), nil
+		return p.checkTerm(TermVariable, tok.literal), nil
 	default:
 		return nil, ErrParser
 	}
 }
 
 // parsePars parses the <pars> non-terminal.
+// <pars> ::= (<args>) | ϵ
 func (p *ParserImpl) parsePars() (*Term, error) {
 	tok, err := p.peekToken()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
-	// <pars> ::= (<args>) | ϵ
+	// pars -> epsilon
 	if tok.typ != tokenLpar {
 		return nil, nil // Epsilon production
 	}
 
+	// pars -> (args)
 	// Consume '('
-	_, err = p.nextToken()
+	tok, err = p.nextToken()
 
 	// Parse <args>
 	args, err := p.parseArgs()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
 	// Expect ')'
@@ -210,14 +213,14 @@ func (p *ParserImpl) parseArgs() ([]*Term, error) {
 	// <args> ::= <term> <other args>
 	term, err := p.parseTerm()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 	args = append(args, term)
 
 	// Parse <other args>
 	otherArgs, err := p.parseOtherArgs()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 	args = append(args, otherArgs...)
 
@@ -225,26 +228,28 @@ func (p *ParserImpl) parseArgs() ([]*Term, error) {
 }
 
 // parseOtherArgs parses the <other args> non-terminal.
+// <other args> ::= , <args> | ϵ
 func (p *ParserImpl) parseOtherArgs() ([]*Term, error) {
 	tok, err := p.peekToken()
 	if err != nil {
-		return nil, err
+		return nil, ErrParser
 	}
 
-	// <other args> ::= , <args> | ϵ
+	// other args -> \epsilon
 	if tok.typ != tokenComma {
-		return nil, nil // Epsilon production
+		return nil, nil
 	}
 
+	// other args -> , args
 	// Consume ','
-	_, err = p.nextToken()
+	tok, err = p.nextToken()
 
 	// Parse <args>
 	return p.parseArgs()
 }
 
-// getOrCreateTerm returns a used term or creates a new one.
-func (p *ParserImpl) getOrCreateTerm(typ TermType, literal string) *Term {
+// checkTerm returns a used term or creates a new one.
+func (p *ParserImpl) checkTerm(typ TermType, literal string) *Term {
 	key := strconv.Itoa(int(typ)) + ":" + literal
 	if term, ok := p.usedTerms[key]; ok {
 		return term
@@ -254,8 +259,8 @@ func (p *ParserImpl) getOrCreateTerm(typ TermType, literal string) *Term {
 	return term
 }
 
-// getOrCreateCompoundTerm returns a used compound term or creates a new one.
-func (p *ParserImpl) getOrCreateCompoundTerm(functor *Term, args []*Term) *Term {
+// checkCompoundTerm returns a used compound term or creates a new one.
+func (p *ParserImpl) checkCompoundTerm(functor *Term, args []*Term) *Term {
 	key := "compound:" + functor.Literal + "(" + TermSliceToString(args) + ")"
 	if term, ok := p.usedTerms[key]; ok {
 		return term
