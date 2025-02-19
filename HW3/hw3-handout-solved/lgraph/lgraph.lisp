@@ -1,7 +1,9 @@
 ;; You may define helper functions here
 
 (defun find-sequence (g1 g2 start target k)
-    ;; TODO: Incomplete function
-    ;; The next line should not be in your solution.
-    (list 'incomplete)
+    (cond
+        ((and (equal (g1 start) nil) ((equal (g2 start) nil ))) ())
+    )
 )
+
+(defun )
