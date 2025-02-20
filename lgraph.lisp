@@ -1,7 +1,39 @@
 ;; You may define helper functions here
+(defun generate-sequences (g start target k)
+  (let ((result '()))
+    (labels ((dfs (current path steps)
+               (if (= steps k)
+                   (when (eql current target)
+                     (push (reverse path) result))
+                   (multiple-value-bind (edges exists) (funcall g current)
+                     (when exists
+                       (dolist (e edges)
+                         (dfs (cadr e) (cons (car e) path) (1+ steps)))))))
+      (dfs start '() 0)
+      result)))
+
+(defun is-sequence-present (g start target sequence)
+  (if (null sequence)
+      (multiple-value-bind (edges exists) (funcall g start)
+        (declare (ignore edges))
+        (and exists (eql start target)))
+      (let ((current-nodes (make-hash-table :test #'eql)))
+        (setf (gethash start current-nodes) t)
+        (loop for label in sequence
+              do (let ((next-nodes (make-hash-table :test #'eql)))
+                   (maphash (lambda (node _)
+                              (multiple-value-bind (edges exists) (funcall g node)
+                                (when exists
+                                  (dolist (e edges)
+                                    (when (eql (car e) label)
+                                      (setf (gethash (cadr e) next-nodes) t)))))
+                            current-nodes)
+                   (when (zerop (hash-table-count next-nodes))
+                     (return-from is-sequence-present nil))
+                   (setf current-nodes next-nodes)))
+        (gethash target current-nodes))))
 
 (defun find-sequence (g1 g2 start target k)
-    ;; TODO: Incomplete function
-    ;; The next line should not be in your solution.
-    (list 'incomplete)
-)
+  (dolist (seq (generate-sequences g1 start target k) (values nil nil))
+    (unless (is-sequence-present g2 start target seq)
+      (return (values seq t)))))
