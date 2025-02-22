@@ -1,3 +1,9 @@
+<<<<<<< HEAD
 Linh Huynh vanhuynh@ucdavis.edu
 William Pham tqnpham@ucdavis.edu
 Nguyen Tran ngytran@ucdavis.edu
+=======
+Linh Huynh <vanhuynh@ucdavis.edu>
+William Pham <tqnpham@ucdavis.edu>
+Nguyen Tran <ngytran@ucdavis.edu>
+>>>>>>> main
