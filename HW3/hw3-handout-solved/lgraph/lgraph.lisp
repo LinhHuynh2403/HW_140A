@@ -2,13 +2,12 @@
   (let ((sequences (find-sequences g1 u v k)))
     (check-sequences sequences g2 u v k)))
 
-
 (defun find-sequences (graph u v k)
   (cond
     ;; Base case: If u == v and k == 0, return an empty sequence.
     ((and (eql u v) (zerop k)) '(nil))
-    ;; Base case: If k <= 0, return nil (invalid sequence).
-    ((<= k 0) nil)
+    ;; Base case: If k < 0, return nil (invalid sequence).
+    ((< k 0) nil)
     ;; Recursive case: Explore all edges from u.
     (t
      (let ((edges (funcall graph u)))
@@ -22,8 +21,8 @@
     (t
      (let* ((edge (car edges))
             (label (car edge))
-            (next-node (cdr edge))
-            ;; Find all sequences from next-node to v with length k-1.
+            (next-node (cadr edge))
+            ;; Find all sequences from next-node to v with length k.
             (sequences (find-sequences graph next-node v k)))
        ;; Prepend the current label to each sequence and combine results.
        (append (mapcar (lambda (seq) (cons label seq)) sequences)
@@ -41,6 +40,7 @@
     ;; Otherwise, recurse on the remaining sequences.
     (t (check-sequences (cdr sequences) g2 u v k))))
 
+
 (defun sequence-exists-in-graph (graph u v seq k)
   (let ((sequences (find-sequences graph u v k)))
     (sequence-exists-helper sequences seq)))
@@ -53,3 +53,4 @@
     ((equal seq (car sequences)) t)
     ;; Otherwise, recurse on the remaining sequences.
     (t (sequence-exists-helper (cdr sequences) seq))))
+
