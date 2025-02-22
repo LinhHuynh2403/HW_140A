@@ -40,7 +40,6 @@
     ;; Otherwise, recurse on the remaining sequences.
     (t (check-sequences (cdr sequences) g2 u v k))))
 
-
 (defun sequence-exists-in-graph (graph u v seq k)
   (let ((sequences (find-sequences graph u v k)))
     (sequence-exists-helper sequences seq)))
@@ -53,4 +52,3 @@
     ((equal seq (car sequences)) t)
     ;; Otherwise, recurse on the remaining sequences.
     (t (sequence-exists-helper (cdr sequences) seq))))
-
