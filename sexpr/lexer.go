@@ -194,9 +194,9 @@ func isSpace(r rune) bool {
 }
 
 func isSymbolOrNumber(r rune) bool {
-	return r == '_' || r == '-' || r == '+' || r == '*' || unicode.IsLetter(r) || isNumber(r)
+	return r == '_' || r == '-' || r == '+' || r == '*' || unicode.IsLetter(r) || is_number(r)
 }
 
-func isNumber(r rune) bool {
+func is_number(r rune) bool {
 	return '0' <= r && r <= '9'
 }
