@@ -62,9 +62,6 @@ func (p *ParserImpl) Parse(input string) (*SExpr, error) {
 	}
 
 	tok, err := p.nextToken()
-	if err != nil {
-		return nil, ErrParser
-	}
 
 	if tok.typ != tokenEOF {
 		return nil, ErrParser
@@ -88,8 +85,8 @@ func (p *ParserImpl) backToken(tok *token) {
 func (p *ParserImpl) parseSExpr() (*SExpr, error) {
     tok, err := p.nextToken()
     if err != nil {
-        return nil, ErrParser
     }
+
     switch tok.typ {
     case tokenNumber:
         return mkNumber(tok.num), nil
@@ -111,7 +108,6 @@ func (p *ParserImpl) parseSExpr() (*SExpr, error) {
 func (p *ParserImpl) parseList() (*SExpr, error) {
     tok, err := p.nextToken()
     if err != nil {
-        return nil, ErrParser
     }
 
 
@@ -138,7 +134,6 @@ func (p *ParserImpl) parseList() (*SExpr, error) {
 func (p *ParserImpl) parseTail() (*SExpr, error) {
     tok, err := p.nextToken()
     if err != nil {
-        return nil, ErrParser
     }
 
     switch tok.typ {
@@ -151,7 +146,6 @@ func (p *ParserImpl) parseTail() (*SExpr, error) {
         }
         tok, err := p.nextToken()
         if err != nil {
-            return nil, ErrParser
         }
         if tok.typ != tokenRpar {
             // Invalid syntax: missing closing parenthesis after dot
@@ -166,7 +160,6 @@ func (p *ParserImpl) parseTail() (*SExpr, error) {
         }
         cdr, err := p.parseTail()
         if err != nil {
-            return nil, err
         }
         return mkConsCell(car, cdr), nil
     }
