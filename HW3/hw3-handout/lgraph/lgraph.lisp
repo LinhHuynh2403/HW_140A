@@ -31,6 +31,7 @@
 
 (defun check-sequences (sequences g2 u v k)
   (cond
+    ((and (null sequences) (equal u v) (zerop k) (null (funcall g2 u))) (cons nil t))
     ;; Base case: If no more sequences to check, return nil.
     ((null sequences) nil)
     ;; Check if the current sequence does not exist in g2.
