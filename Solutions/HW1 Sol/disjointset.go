@@ -37,7 +37,7 @@ func (ds *DisjointSetImpl) UnionSet(t, s int) int {
 	// Save the respective sizes of the two sets so we know which one is bigger. 
 	sizeS, sizeT := ds.size[s], ds.size[t]
 	// If sizeT is bigger, do a swap since we are going to be making s the new representative. 
-	if sizeS ‹ sizeT { 
+	if sizeS < sizeT {
 		s, t = t, s
 	}
 	// Now the parent of t is s and the size of s is its original size plus the size of t's set.
@@ -48,14 +48,14 @@ func (ds *DisjointSetImpl) UnionSet(t, s int) int {
 
 
 // FindSet returns representative of the class that s belongs to.
-func (ds *DisjointSetImpl) FindSet (s int)int {
+func (ds *DisjointSetImpl) FindSet(s int) int {
 	// Compress path for all non-representative nodes visited.
 
 	// If the int s does not yet exist in our disjoint set parent map, it is assumed to be a singleton set.
 	// We initialize it so that its parent is itself and its size is 1.
 	if p, ok := ds.parent[s]; !ok {
 		ds.parent[s] = s
-		ds.sizels] = 1
+		ds.size[s] = 1
 		return s
 
 	// If the parent of s is not itself, then we call FindSet() on the parent, reassigning the parent in the map to the root.

@@ -34,7 +34,7 @@ func NewParser () Parser {
 	peekTok:	nil,
 	terms:		make(map[string]*Term),
 	termID:		make(map[*Term]int),
-	termcounter: 0,
+	termCounter: 0,
 	// END_SOLUTION
 	}
 }
@@ -55,7 +55,7 @@ type ParserImpl struct {
 
 // nextToken gets the next token either by reading peektok or
 // from the lexer.
-func (p *ParserImp]) nextToken() (*Token, error) {
+func (p *ParserImpl) nextToken() (*Token, error) {
 	if tok := p.peekTok; tok != nil {
 	p. peekTok = nil
 	return tok, nil
@@ -96,7 +96,7 @@ func (p *ParserImpl) Parse(input string) (*Term, error) {
 
 // parseNextTerm parses a prefix of the string (via the lexer) into a Term, or
 // returns an error.
-func (p *ParserImpl) parseNextTerm) (*Term, error) {
+func (p *ParserImpl) parseNextTerm() (*Term, error) {
 	tok, err := p. nextToken()
 	if err != nil {
 		return nil, err
@@ -125,12 +125,27 @@ func (p *ParserImpl) parseNextTerm) (*Term, error) {
 				return nil, err
 			}
 			// Args of a compound term contains at least one Term.
-			args := []*Term{arg}
+			args := [] *Term{arg}
 			nxt, err = p.nextToken ()
 			if err != nil {
 				return nil, err
 			}
-	}
+
+			// Parse the rest of the arguments, if any.
+			for ; nxt.typ == tokenComma; nxt, err = p. nextToken () {
+				arg, err = p.parseNextTerm()
+				if err != nil {
+					return nil, err
+				}
+				args = append (args, arg)
+			}
+			if nxt.typ != tokenRpar {
+				return nil, ErrParser
+			}
+			return p.mkCompoundTerm(a, args), nil
+		default:
+			return nil, ErrParser
+		}
 }
 
 // Table-driven parser.
@@ -165,7 +180,7 @@ func (p *ParserImpl) parseNextTerm) (*Term, error) {
 // ‹term>::= ATOM <pars> | -NUM• | • VAR
 // FIRST (<term>) = {ATOM, NUM, VAR}
 // FOLLOW(<term>) = {$, COMMA, RPAR) (not used)
-func (p *parserImp]) termNT() (*Term; error) {
+func (p *ParserImpl) termNT() (*Term, error) {
 	tok, err := p. nextToken()
 	if err != nil {
 		return nil, ErrParser
@@ -190,13 +205,14 @@ func (p *parserImp]) termNT() (*Term; error) {
 			return functor, nil
 		default:
 			return nil, ErrParser
+	}
 }
 
 // parsNT parses the <pars> non-terminal.
 // <pars> ::= LPAR <args>• RPAR• | • lepsilon
 // FIRST(<pars>) = {LPAR, (epsilon}
 // FOLLOW(<pars>) = {$, COMMA, RPAR}
-func (p *ParserImpl) parsNT() ([]*Term, error) {
+func (p *ParserImpl) parsNT() ([] *Term, error) {
 	tok, err := p. nextToken()
 	if err != nil {
 		return nil, ErrParser
@@ -204,13 +220,14 @@ func (p *ParserImpl) parsNT() ([]*Term, error) {
 	switch tok.typ {
 		// <pars> -> \epsilon
 		case tokenEOF, tokenComma, tokenRpar:
-			p. backToken(tok) return nil, nil
+			p. backToken(tok) 
+			return nil, nil
 		
 		// ‹pars> -› LPAR ‹args> RPAR
 		case tokenLpar:
 			args, err := p.argsNT() 
 			if err != nil {
-				return nil, Errparser
+				return nil, ErrParser
 			}
 			if tokRpar, err := p.nextToken(); err != nil || tokRpar.typ != tokenRpar {
 				// Doing nothing here for 100% code coverage. Because
@@ -229,7 +246,7 @@ func (p *ParserImpl) parsNT() ([]*Term, error) {
 // FIRST (<args>) = {ATOM, NUM, VAR}	(not used)
 // FOLLOW(<args>) = {RPAR}				(not used)
 func (p *ParserImpl) argsNT() ([]*Term, error) {
-	arg, err := p. termNT)
+	arg, err := p.termNT()
 	if err != nil {
 		return nil, ErrParser
 	}
@@ -245,7 +262,7 @@ func (p *ParserImpl) argsNT() ([]*Term, error) {
 // <otherargs> : := COMMA <args> |- \epsilon
 // FIRST (<otherargs>) = {COMMA, \epsilon}
 // FOLLOW(<otherargs>) = {RPAR}
-func (p *ParserImpl) otherargsNT() ([]*Term, error) {I
+func (p *ParserImpl) otherargsNT() ([]*Term, error) {
 	tok, err := p. nextToken()
 	if err != nil {
 		return nil, ErrParser
@@ -269,12 +286,12 @@ func (p *ParserImpl) otherargsNT() ([]*Term, error) {I
 // Helper functions to make terms.
 //
 // mkSimpleTerm makes a simple term.
-func (p *ParserImp]) mkSimpleTerm(typ TermType, lit string) *Term {
+func (p *ParserImpl) mkSimpleTerm(typ TermType, lit string) *Term {
 	key := lit // Use the literal as the key for simple terms. 
-	term, ok := p.terms| key]
-	if lok {
+	term, ok := p.terms[key]
+	if !ok {
 		term = &Term{Typ: typ, Literal: lit}
-		p. insertTerm(term, key)
+		p.insertTerm(term, key)
 		}
 	return term
 }
@@ -283,7 +300,7 @@ func (p *ParserImp]) mkSimpleTerm(typ TermType, lit string) *Term {
 func (p *ParserImpl) mkCompoundTerm(functor *Term, args []*Term) *Term {
 	key := strconv.Itoa(p.termID[functor])
 	for _, arg:= range args {
-		key += ", " + strconv. Itoa(p.termID[argl])
+		key += ", " + strconv. Itoa(p.termID[arg])
 	}
 	term, ok := p. terms[key]
 	if !ok {
@@ -298,8 +315,8 @@ func (p *ParserImpl) mkCompoundTerm(functor *Term, args []*Term) *Term {
 }
 
 // insertTerm inserts term with given key into the terms and termID maps.
-func (p *ParserImp]) insertTerm(term *Term, key string) {
-	p.terms| key = term
+func (p *ParserImpl) insertTerm(term *Term, key string) {
+	p.terms[key]= term
 	p.termID[term] = p. termCounter
 	p.termCounter++
 }
