@@ -33,6 +33,7 @@ func check(g LGraph, s, t node, seq []rune) bool {
 		}
 		return false
 	}
+}
 
 func find(g1, g2 LGraph, c, t node, k uint, s node, prefix []rune) ([]rune, bool) {
 	// Get outgoing edges from the current node c, if they exist.
