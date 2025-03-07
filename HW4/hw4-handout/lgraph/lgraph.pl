@@ -1,22 +1,22 @@
-path_sequence(_, U, U, 0, []).
+% A node is “in” the graph if it appears as a source or target in an edge.
+node(G, N) :- edge(G, N, _, _).
+node(G, N) :- edge(G, _, _, N).
 
-% Recursive case: build a path of length K by extending a path of length K-1.
-path_sequence(Graph, U, V, K, [L|Labels]) :-
+% A path of length 0 exists from a node to itself provided the node is in the graph.
+path(G, U, V, 0, []) :-
+    node(G, U),
+    U = V.
+
+% A path of length K>0 exists from U to V if there is an edge from U to some intermediate W
+% labeled L and a path of length K-1 from W to V with the rest of the labels.
+path(G, U, V, K, [L|Ls]) :-
     K > 0,
-    edge(Graph, U, L, Next),
+    edge(G, U, L, W),
     K1 is K - 1,
-    path_sequence(Graph, Next, V, K1, Labels).
+    path(G, W, V, K1, Ls).
 
-% Helper predicate to check if a sequence is not present in another graph.
-sequence_not_in_graph(Graph, U, V, K, Sequence) :-
-    \+ path_sequence(Graph, U, V, K, Sequence).
-
-% Main predicate to find sequences in G1 that are not in G2.
+% find_sequence(G1, G2, U, V, K, S) is true if S is a sequence of K labels for a path from U to V in graph G1
+% and S is NOT a sequence for a path from U to V in graph G2.
 find_sequence(G1, G2, U, V, K, S) :-
-    path_sequence(G1, U, V, K, S),
-    sequence_not_in_graph(G2, U, V, K, S).
-
-find_sequence(G1, G2, U, V, 0, []) :-
-    U = V,
-    edge(G1, U, _, _),
-    not(edge(G2, U, _, _).
+    path(G1, U, V, K, S),
+    not(path(G2, U, V, K, S)).
