@@ -2,7 +2,7 @@
 node(G, N) :- edge(G, N, _, _).
 node(G, N) :- edge(G, _, _, N).
 
-% The predicate path/5 works when the length K is given.
+% The predicate path works when the length K is given.
 % A path of length 0 exists from a node to itself provided the node is in the graph.
 path(G, U, V, 0, []) :-
     node(G, U),
@@ -15,7 +15,8 @@ path(G, U, V, K, [L|Ls]) :-
     K1 is K - 1,
     path(G, W, V, K1, Ls).
 
-% The predicate path_seq/4 does not require the length to be threaded.
+
+% The predicate path_seq works when the length K is not given.
 % S is a sequence (list of labels) for a path from U to V in graph G.
 path_seq(G, U, V, []) :-
     U = V,
