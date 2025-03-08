@@ -2,8 +2,8 @@ package unify
 
 import (
 	"errors"
-    "hw4/disjointset"
-    "hw4/term"
+	"hw4/disjointset"
+	"hw4/term"
 )
 
 // ErrUnifier is returned when two terms cannot be unified.
@@ -19,85 +19,84 @@ type Unifier interface {
 	Unify(*term.Term, *term.Term) (UnifyResult, error)
 }
 
-// GeneralUnifier implements the Unifier interface using a single disjoint–set.
-type GeneralUnifier struct {
-	ds     disjointset.DisjointSet // single disjoint-set instance for all terms
-	size   map[int]int             // union–by–size (keyed by term index)
-	schema map[int]*term.Term      // each set's “canonical” term (variable or non-variable)
-	vars   map[int][]*term.Term    // variables in the equivalence class (keyed by representative index)
+// UnifierImpl implements the Unifier interface using a disjoint-set
+// to manage equivalences between variables and a substitution map to record
+// non-variable bindings.
+type UnifierImpl struct {
+	ds     disjointset.DisjointSet   // union–find for variable equivalences
+	varID  map[*term.Term]int        // assigns a unique integer id to each variable term
+	repVar map[int]*term.Term        // stores a canonical variable for each DS set (by rep id)
+	subst  map[int]*term.Term        // maps a DS representative id to a binding term (if any)
+	nextID int                       // next unique id to assign
 }
 
-// Global maps for term indexing and cycle detection.
-var (
-	unifyMap    UnifyResult
-	mapToInt    = map[*term.Term]int{}
-	// mapToTerm is no longer used for canonical lookup; use unif.schema instead.
-	nodeCounter = 0
-	visited     = map[int]bool{}
-	acyclic     = map[int]bool{}
-)
-
-// resetGlobal resets the global maps used for indexing and cycle detection.
-func resetGlobal() {
-	unifyMap = UnifyResult{}
-	mapToInt = map[*term.Term]int{}
-	nodeCounter = 0
-	visited = map[int]bool{}
-	acyclic = map[int]bool{}
-}
-
-// NewUnifier creates a new GeneralUnifier.
+// NewUnifier creates an instance of UnifierImpl.
 func NewUnifier() Unifier {
-	return &GeneralUnifier{
+	return &UnifierImpl{
 		ds:     disjointset.NewDisjointSet(),
-		size:   make(map[int]int),
-		schema: make(map[int]*term.Term),
-		vars:   make(map[int][]*term.Term),
+		varID:  make(map[*term.Term]int),
+		repVar: make(map[int]*term.Term),
+		subst:  make(map[int]*term.Term),
+		nextID: 0,
 	}
 }
 
-// Initializer registers a term (if not nil) in the global maps.
-func (unif *GeneralUnifier) Initializer(t1 *term.Term, t2 *term.Term) {
-	if t1 != nil {
-		if _, ok := mapToInt[t1]; !ok {
-			mapToInt[t1] = nodeCounter
-			unif.size[nodeCounter] = 1
-			unif.schema[nodeCounter] = t1
-			// Record variable only if t1 is a variable.
-			if t1.Typ == term.TermVariable {
-				unif.vars[nodeCounter] = []*term.Term{t1}
-			} else {
-				unif.vars[nodeCounter] = []*term.Term{}
-			}
-			nodeCounter++
-		}
+// getID returns a unique id for the variable term v.
+// If v does not already have an id, one is assigned and v is recorded as the canonical variable.
+func (u *UnifierImpl) getID(v *term.Term) int {
+	if id, ok := u.varID[v]; ok {
+		return id
 	}
-	if t2 != nil {
-		if _, ok := mapToInt[t2]; !ok {
-			mapToInt[t2] = nodeCounter
-			unif.size[nodeCounter] = 1
-			unif.schema[nodeCounter] = t2
-			if t2.Typ == term.TermVariable {
-				unif.vars[nodeCounter] = []*term.Term{t2}
-			} else {
-				unif.vars[nodeCounter] = []*term.Term{}
-			}
-			nodeCounter++
-		}
-	}
+	id := u.nextID
+	u.nextID++
+	u.varID[v] = id
+	u.repVar[id] = v
+	return id
 }
 
-// occursCheck recursively checks whether varTerm occurs in t.
-func occursCheck(varTerm *term.Term, t *term.Term) bool {
-	if varTerm == t {
-		return true
+// prune returns the current representative (or binding) of term t.
+// For a variable, if a binding exists in subst, we recursively prune that binding;
+// otherwise we return the canonical variable from repVar.
+// For compound terms, we prune each argument.
+func (u *UnifierImpl) prune(t *term.Term) *term.Term {
+	if t == nil {
+	}
+	if t.Typ == term.TermVariable {
+		id := u.getID(t)
+		rep := u.ds.FindSet(id)
+		if binding, ok := u.subst[rep]; ok {
+			pruned := u.prune(binding)
+			u.subst[rep] = pruned
+			return pruned
+		}
+		return u.repVar[rep]
 	}
 	if t.Typ == term.TermCompound {
-		if occursCheck(varTerm, t.Functor) {
-			return true
+		newArgs := make([]*term.Term, len(t.Args))
+		for i, arg := range t.Args {
+			newArgs[i] = u.prune(arg)
 		}
+		return &term.Term{
+			Typ:     t.Typ,
+			Functor: t.Functor,
+			Args:    newArgs,
+		}
+	}
+	// Atoms and numbers are returned as is.
+	return t
+}
+
+// occursCheck ensures that variable v does not occur in term t.
+// This prevents cycles (e.g. unifying X with f(X)).
+func (u *UnifierImpl) occursCheck(v *term.Term, t *term.Term) bool {
+	t = u.prune(t)
+	if t.Typ == term.TermVariable {
+		// If the canonical representatives are equal then v occurs in t.
+		return u.ds.FindSet(u.getID(v)) == u.ds.FindSet(u.getID(t))
+	}
+	if t.Typ == term.TermCompound {
 		for _, arg := range t.Args {
-			if occursCheck(varTerm, arg) {
+			if u.occursCheck(v, arg) {
 				return true
 			}
 		}
@@ -105,129 +104,131 @@ func occursCheck(varTerm *term.Term, t *term.Term) bool {
 	return false
 }
 
-// Unify attempts to unify two terms.
-func (unif *GeneralUnifier) Unify(t1 *term.Term, t2 *term.Term) (UnifyResult, error) {
-	resetGlobal()             // Reset global indexing for each unification.
-	unif.Initializer(t1, t2)    // Register t1 and t2.
-	unifyMap = UnifyResult{}    // Clear previous substitution.
-	if err := unif.UnifClosure(t1, t2); err != nil {
-		return nil, ErrUnifier
+// equalTerms compares two terms for equality.
+// (For variables, since the parser interns simple terms, pointer equality is sufficient.)
+func (u *UnifierImpl) equalTerms(s, t *term.Term) bool {
+	if s.Typ != t.Typ {
+		return false
 	}
-	if err := unif.FindSolution(t1); err != nil {
-		return nil, ErrUnifier
+	if s.Typ == term.TermVariable {
+		return s == t
 	}
-	return unifyMap, nil
+	if s.Typ != term.TermCompound {
+		return s.Literal == t.Literal
+	}
+	// For compound terms, compare functor and arguments.
+	if s.Functor == nil || t.Functor == nil || s.Functor.Literal != t.Functor.Literal {
+		return false
+	}
+	if len(s.Args) != len(t.Args) {
+		return false
+	}
+	for i := 0; i < len(s.Args); i++ {
+		if !u.equalTerms(s.Args[i], t.Args[i]) {
+			return false
+		}
+	}
+	return true
 }
 
-// UnifClosure performs the main unification procedure.
-func (unif *GeneralUnifier) UnifClosure(t1 *term.Term, t2 *term.Term) error {
-	unif.Initializer(t1, t2)
-	idx1 := mapToInt[t1]
-	idx2 := mapToInt[t2]
-	rep1 := unif.ds.FindSet(idx1)
-	rep2 := unif.ds.FindSet(idx2)
-	s := unif.schema[rep1]
-	t := unif.schema[rep2]
-
-	// If the canonical terms are already identical, nothing to do.
-	if s == t {
+// unify is a recursive helper that unifies terms s and t.
+// It uses the disjoint-set to merge free variables and the subst map for bindings.
+// The algorithm performs an occurs check when a variable is about to be bound.
+func (u *UnifierImpl) unify(s *term.Term, t *term.Term) error {
+	s = u.prune(s)
+	t = u.prune(t)
+	if u.equalTerms(s, t) {
 		return nil
 	}
-
-	// Occurs check: if one side is a variable and occurs inside the other.
-	if s.Typ == term.TermVariable && t.Typ != term.TermVariable {
-		if occursCheck(s, t) {
-			return ErrUnifier
-		}
-	}
-	if t.Typ == term.TermVariable && s.Typ != term.TermVariable {
-		if occursCheck(t, s) {
-			return ErrUnifier
-		}
-	}
-
-	// If either side is variable, union their equivalence classes.
-	if s.Typ == term.TermVariable || t.Typ == term.TermVariable {
-		unif.Union(rep1, rep2)
-	} else {
-		// Both are non-variable: they must be compound with the same functor and arity.
-		if s.Typ == term.TermCompound && t.Typ == term.TermCompound {
-			if s.Functor != t.Functor || len(s.Args) != len(t.Args) {
-				return ErrUnifier
+	// If s is a variable...
+	if s.Typ == term.TermVariable {
+		// If both are variables, merge their equivalence classes.
+		if t.Typ == term.TermVariable {
+			idS := u.getID(s)
+			idT := u.getID(t)
+			repS := u.ds.FindSet(idS)
+			repT := u.ds.FindSet(idT)
+			if repS != repT {
+				newRep := u.ds.UnionSet(idS, idT)
+					// No bindings exist; update the canonical variable.
+					if idS < idT {
+						u.repVar[newRep] = s
+					} else {
+						u.repVar[newRep] = t
+					}
 			}
-			unif.Union(rep1, rep2)
-			// Recursively unify corresponding arguments.
-			for i := 0; i < len(s.Args); i++ {
-				unif.Initializer(s.Args[i], t.Args[i])
-				if err := unif.UnifClosure(s.Args[i], t.Args[i]); err != nil {
-					return ErrUnifier
-				}
-			}
-		} else {
-			// Mismatched constants (or one constant and one compound) cannot be unified.
+			return nil
+		}
+		// s is variable and t is not.
+		if u.occursCheck(s, t) {
 			return ErrUnifier
 		}
-	}
-	return nil
-}
-
-// Union merges the equivalence classes corresponding to rep1 and rep2.
-func (unif *GeneralUnifier) Union(rep1, rep2 int) {
-	// Ensure we have the current representatives.
-	rep1 = unif.ds.FindSet(rep1)
-	rep2 = unif.ds.FindSet(rep2)
-	if rep1 == rep2 {
-		return
-	}
-	var newRep, oldRep int
-	if unif.size[rep1] >= unif.size[rep2] {
-		newRep = rep1
-		oldRep = rep2
-	} else {
-		newRep = rep2
-		oldRep = rep1
-	}
-	unif.size[newRep] += unif.size[oldRep]
-	unif.vars[newRep] = append(unif.vars[newRep], unif.vars[oldRep]...)
-	// If the canonical term for newRep is a variable, update it to the one from oldRep.
-	if unif.schema[newRep].Typ == term.TermVariable {
-		unif.schema[newRep] = unif.schema[oldRep]
-	}
-	// Perform the union in the disjoint-set.
-	unif.ds.UnionSet(newRep, oldRep)
-}
-
-// FindSolution traverses the unified term structure to build the substitution mapping.
-// It also uses a visited/acyclic mechanism to detect cycles.
-func (unif *GeneralUnifier) FindSolution(t *term.Term) error {
-	idx := mapToInt[t]
-	rep := unif.ds.FindSet(idx)
-	s := unif.schema[rep]
-	if acyclic[rep] {
+		idS := u.getID(s)
+		rep := u.ds.FindSet(idS)
+		u.subst[rep] = t
 		return nil
 	}
-	if visited[rep] {
+	// Similarly, if t is variable.
+	if t.Typ == term.TermVariable {
+		if u.occursCheck(t, s) {
+			return ErrUnifier
+		}
+		idT := u.getID(t)
+		rep := u.ds.FindSet(idT)
+		u.subst[rep] = s
+		return nil
+	}
+	// Both s and t are non-variable.
+	// If both are atoms or numbers, compare their literals.
+	if s.Typ != term.TermCompound && t.Typ != term.TermCompound {
+		if s.Literal == t.Literal {
+		}
 		return ErrUnifier
 	}
-	if s.Typ == term.TermCompound {
-		visited[rep] = true
-		for _, arg := range s.Args {
-			unif.Initializer(arg, nil)
-			if err := unif.FindSolution(arg); err != nil {
-				return ErrUnifier
-			}
-		}
-		visited[rep] = false
+	// If one is a compound term and the other is not, they cannot be unified.
+	if s.Typ != t.Typ {
+		return ErrUnifier
 	}
-	acyclic[rep] = true
-	// Ensure that s has been registered.
-	unif.Initializer(s, nil)
-	rep2 := unif.ds.FindSet(mapToInt[s])
-	varsList := unif.vars[rep2]
-	for _, v := range varsList {
-		if v != s {
-			unifyMap[v] = s
+	// Both are compound: check that the functors match.
+	if s.Functor == nil || t.Functor == nil || s.Functor.Literal != t.Functor.Literal {
+		return ErrUnifier
+	}
+	// Check that the number of arguments is the same.
+	if len(s.Args) != len(t.Args) {
+		return ErrUnifier
+	}
+	// Recursively unify each pair of corresponding arguments.
+	for i := 0; i < len(s.Args); i++ {
+		if err := u.unify(s.Args[i], t.Args[i]); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+// Unify is the method required by the Unifier interface.
+// It calls the helper unify method and then builds a substitution mapping
+// (the most general unifier) by iterating over all variable ids.
+func (u *UnifierImpl) Unify(s, t *term.Term) (UnifyResult, error) {
+	if err := u.unify(s, t); err != nil {
+		return nil, err
+	}
+	result := make(UnifyResult)
+	// For every variable encountered, determine its binding.
+	for v, id := range u.varID {
+		rep := u.ds.FindSet(id)
+		if binding, ok := u.subst[rep]; ok {
+			pruned := u.prune(binding)
+			if pruned != v { // only include if the binding is not the variable itself
+				result[v] = pruned
+			}
+		} else {
+			// For free variables, choose a canonical representative.
+			canonical := u.repVar[rep]
+			if canonical != v {
+				result[v] = canonical
+			}
+		}
+	}
+	return result, nil
 }
