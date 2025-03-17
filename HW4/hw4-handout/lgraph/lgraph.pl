@@ -16,14 +16,14 @@ path(G, U, V, K, [L|Ls]) :-
     path(G, W, V, K1, Ls).
 
 
-% The predicate path_seq works when the length K is not given.
-% S is a sequence (list of labels) for a path from U to V in graph G.
-path_seq(G, U, V, []) :-
-    U = V,
-    node(G, U).
-path_seq(G, U, V, [L|Ls]) :-
-    edge(G, U, L, W),
-    path_seq(G, W, V, Ls).
+% % The predicate path_seq works when the length K is not given.
+% % S is a sequence (list of labels) for a path from U to V in graph G.
+% path_seq(G, U, V, []) :-
+%     U = V,
+%     node(G, U).
+% path_seq(G, U, V, [L|Ls]) :-
+%     edge(G, U, L, W),
+%     path_seq(G, W, V, Ls).
 
 % find_sequence/6: S is a sequence (of K labels) for a path from U to V in graph G1,
 % and S is NOT a sequence for a path from U to V in graph G2.
@@ -31,10 +31,8 @@ path_seq(G, U, V, [L|Ls]) :-
 % If K is provided (nonvar) we use path/5; otherwise we generate S with path_seq/4
 % and then determine K as its length.
 find_sequence(G1, G2, U, V, K, S) :-
-    ( nonvar(K) ->
-         path(G1, U, V, K, S)
+    ( var(K) -> (length(S, K), path(G1, U, V, K, S))
     ;
-         path_seq(G1, U, V, S),
-         length(S, K)
+         path(G1, U, V, K, S)
     ),
-    not(path_seq(G2, U, V, S)).
+    not(path(G2, U, V, K, S)).
