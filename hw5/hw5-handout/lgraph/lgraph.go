@@ -47,7 +47,6 @@ func generateSequencesConcurrent(g LGraph, s node, t node, k uint) [][]rune {
         if exists && s == t {
             return [][]rune{{}}
         }
-        return nil
     }
 
     var result [][]rune
