@@ -1,79 +1,131 @@
 package lgraph
 
+import (
+    "sync"
+)
+
 type node uint
 
 type edge struct {
-	destination node
-	label       rune
+    destination node
+    label       rune
 }
 
 type LGraph func(node) ([]edge, bool)
 
 func FindSequence(g1, g2 LGraph, s node, t node, k uint) ([]rune, bool) {
-	sequences := generateSequences(g1, s, t, k)
-	for _, seq := range sequences {
-		if !isSequencePresent(g2, s, t, seq) {
-			return seq, true
-		}
-	}
-	return nil, false
+    sequences := generateSequencesConcurrent(g1, s, t, k)
+
+    resultChan := make(chan []rune, len(sequences))
+    var wg sync.WaitGroup
+
+    for _, seq := range sequences {
+        wg.Add(1)
+        go func(seq []rune) {
+            defer wg.Done()
+            if !isSequencePresent(g2, s, t, seq) {
+                resultChan <- seq
+            }
+        }(seq)
+    }
+
+    go func() {
+        wg.Wait()
+        close(resultChan)
+    }()
+
+    for seq := range resultChan {
+        return seq, true
+    }
+
+    return nil, false
 }
 
-func generateSequences(g LGraph, s node, t node, k uint) [][]rune {
-	var result [][]rune
-	var dfs func(current node, path []rune, steps uint)
+func generateSequencesConcurrent(g LGraph, s node, t node, k uint) [][]rune {
+    if k == 0 {
+        _, exists := g(s)
+        if exists && s == t {
+            return [][]rune{{}}
+        }
+        return nil
+    }
 
-	dfs = func(current node, path []rune, steps uint) {
-		if steps == k {
-			if current == t {
-				newPath := make([]rune, len(path))
-				copy(newPath, path)
-				result = append(result, newPath)
-			}
-			return
-		}
-		edges, exists := g(current)
-		if !exists {
-			return
-		}
-		for _, e := range edges {
-			dfs(e.destination, append(path, rune(e.label)), steps+1)
-		}
-	}
+    var result [][]rune
+    resultChan := make(chan []rune, 100)
+    var wg sync.WaitGroup
+    var mu sync.Mutex
 
-	dfs(s, []rune{}, 0)
-	return result
+    var dfs func(current node, path []rune, steps uint)
+    dfs = func(current node, path []rune, steps uint) {
+        if steps == k {
+            if current == t {
+                newPath := make([]rune, len(path))
+                copy(newPath, path)
+                resultChan <- newPath
+            }
+            return
+        }
+
+        edges, exists := g(current)
+        if !exists {
+            return
+        }
+
+        for _, e := range edges {
+            wg.Add(1)
+            go func(e edge, pathCopy []rune) {
+                defer wg.Done()
+                newPath := append([]rune{}, pathCopy...)
+                newPath = append(newPath, e.label)
+                dfs(e.destination, newPath, steps+1)
+            }(e, path)
+        }
+    }
+
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        dfs(s, []rune{}, 0)
+    }()
+
+    go func() {
+        wg.Wait()
+        close(resultChan)
+    }()
+
+    for seq := range resultChan {
+        mu.Lock()
+        result = append(result, seq)
+        mu.Unlock()
+    }
+
+    return result
 }
 
-func isSequencePresent(g LGraph, s node, t node, sequence []rune) bool {
-    if len(sequence) == 0 {
+func isSequencePresent(g LGraph, s node, t node, seq []rune) bool {
+    if len(seq) == 0 {
         _, exists := g(s)
         return exists && s == t
     }
 
-    currentNodes := make(map[node]bool)
-    currentNodes[s] = true
-
-    for _, label := range sequence {
-        nextNodes := make(map[node]bool)
-
-        for n := range currentNodes {
-            edges, exists := g(n)
-            if !exists {
-                continue
-            }
-            for _, e := range edges {
-                if e.label == label {
-                    nextNodes[e.destination] = true
-                }
-            }
-        }
-
-        if len(nextNodes) == 0 {
+    current := s
+    for _, label := range seq {
+        edges, exists := g(current)
+        if !exists {
             return false
         }
-        currentNodes = nextNodes
-    }
 
-    return currentNodes[t]
+        found := false
+        for _, e := range edges {
+            if e.label == label {
+                current = e.destination
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return current == t
 }
